@@ -1,0 +1,8 @@
+E:\Carieri\Strypes\Project\ProductsCatalog\ProductsCatalog.Data\bin\Debug\ProductsCatalog.Data.dll.config
+E:\Carieri\Strypes\Project\ProductsCatalog\ProductsCatalog.Data\bin\Debug\ProductsCatalog.Data.dll
+E:\Carieri\Strypes\Project\ProductsCatalog\ProductsCatalog.Data\bin\Debug\ProductsCatalog.Data.pdb
+E:\Carieri\Strypes\Project\ProductsCatalog\ProductsCatalog.Data\bin\Debug\EntityFramework.dll
+E:\Carieri\Strypes\Project\ProductsCatalog\ProductsCatalog.Data\bin\Debug\EntityFramework.xml
+E:\Carieri\Strypes\Project\ProductsCatalog\ProductsCatalog.Data\obj\Debug\ProductsCatalog.Data.csprojResolveAssemblyReference.cache
+E:\Carieri\Strypes\Project\ProductsCatalog\ProductsCatalog.Data\obj\Debug\ProductsCatalog.Data.dll
+E:\Carieri\Strypes\Project\ProductsCatalog\ProductsCatalog.Data\obj\Debug\ProductsCatalog.Data.pdb

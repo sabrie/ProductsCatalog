@@ -1,0 +1,354 @@
+﻿@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>Products</title>
+    <script src="~/Scripts/jquery-1.7.1.min.js"></script>
+    <script src="~/Scripts/app/http-requester.js"></script>
+    <script src="~/Scripts/app/ui.js"></script>
+
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css">   
+
+    <script>
+
+        var productsRootUrl = "api/products/";
+        var categoriesRootUrl = "api/categories/";
+
+        $(document).ready(function () {
+            showAllProducts();            
+        });
+
+        function showAllProducts(event) {
+            if (event) {
+                event.preventDefault();
+            }
+
+            var getAllProductsUrl = productsRootUrl + "getproducts";
+            httpRequester.getJSON(getAllProductsUrl, function (data) {
+                clearContent();
+                // render the products table
+                var html = ui.productsUI(data);
+                $(html).appendTo('#result');
+                $("#pageTitle").html("Manage products");
+
+                var searchform = ui.buildSearchForm();
+                $("#searchFormContainer").html(searchform);
+
+            }, function (error) {
+                //alert("An error has occured while rendering the products");
+            });
+        };
+
+        //$('#allProducts').on('click', function () {
+        //    showAllProducts();
+        //});
+
+        // Render a product edit view
+        function requestProductEditView(id) {
+            debugger;
+            var uriEdit = productsRootUrl + "GetProduct/" + id;
+
+            httpRequester.getJSON(uriEdit, function (data) {
+                
+                clearContent();
+                // render the product edit view
+                var htmlEdit = ui.buildProductEditView(data);
+                $(htmlEdit).appendTo('#result');
+                $("#pageTitle").html("Edit product");
+
+            }, function (error, args) {
+                //alert("An error has occured while rendering the product edit view" + error);
+            });
+        };
+
+        // Edit a product
+        function editProduct(id) {
+
+            $("#editProductForm").submit(function (event) {
+                if (event) {
+                    event.preventDefault();
+                }
+
+                var editUri = productsRootUrl + "PutProduct/" + id;
+
+                //var formData = new FormData();
+                //var uploadedImage = $('#uploadimage')[0];
+                //formData.append("UploadedImage", uploadedImage.files[0]);
+                //formData.append("name", $('#name').val());
+                //formData.append("description", $('#description').val());
+                //formData.append("categoryName", $("#category option:selected").text());
+                //formData.append("categoryId", $("#category").children(":selected").attr("id"));
+
+                var editedProductData = {
+                    id: id,
+                    name: $('#name').val(),
+                    description: $('#description').val(),
+                    image: "",
+                    categoryName: $("#category option:selected").text(),
+                    categoryId: $("#category").children(":selected").attr("id")
+                }
+
+                httpRequester.putJSON(editUri, editedProductData, function (data) {
+                    //alert("The product has been successfully edited and saved");
+                    showAllProducts();
+                    displayMessage(data);
+                }, function (error, args) {
+                    //alert("An error occured while editing the product");
+                });
+            });
+        };
+
+        // Render a product create view
+        function requestProductCreateView() {
+
+            debugger;
+            var categoriesUrl = categoriesRootUrl + "GetCategories";
+
+            httpRequester.getJSON(categoriesUrl, function (data) {
+                clearContent();
+                // render the product edit view
+                var htmlEdit = ui.buildProductCreateView(data);
+                $(htmlEdit).appendTo('#result');
+                $("#pageTitle").html("Create a product");
+
+            }, function (error, args) {
+                //alert("An error has occured while rendering the product create view");
+            });
+        };
+
+        //$('#createProductView').on('click', function () {
+        //    requestProductCreateView();
+        //});
+
+
+        // Create a product
+        function createProduct() {            
+            
+            $("#createProductForm").submit(function (event) {
+                if (event) {
+                    event.preventDefault();
+                }
+
+                var createUri = productsRootUrl + "PostProduct";
+
+                //var formData = new FormData();
+                //var uploadedImage = $('#uploadimage')[0];
+                //formData.append("UploadedImage", uploadedImage.files[0]);
+                //formData.append("name", $('#name').val());
+                //formData.append("description", $('#description').val());
+                //formData.append("categoryName", $("#category option:selected").text());
+                //formData.append("categoryId", $("#category").children(":selected").attr("id"));
+
+                var newProductData = {
+                    id: $('#productId').val(),
+                    name: $('#name').val(),
+                    description: $('#description').val(),
+                    image: "",
+                    categoryName: $("#category option:selected").text(),
+                    categoryId: $("#category").children(":selected").attr("id")
+                }
+
+                httpRequester.postJSON(createUri, newProductData, function (data) {
+                    //alert("The product has been successfully edited and saved");
+                    debugger;
+                    showAllProducts();
+                    displayMessage(data);
+                }, function (error, args) {
+                    //alert("An error has occured while creating the product");
+                });
+            });
+        };
+
+        // Delete a product
+        function deleteProduct(id, event) {
+            if (event) {
+                event.preventDefault();
+            }
+            var deleteUrl = productsRootUrl + "DeleteProduct/" + id;
+
+            httpRequester.deleteJSON(deleteUrl, function (data) {
+                clearContent();
+                //alert("The category has been successfully deleted");deleteProduct
+                showAllProducts();
+                displayMessage(data);                
+            }, function (error, args) {                
+                //alert("An error has occured while deleting the category");
+            });
+        };
+
+        function showAllCategories(event) {
+            if (event) {
+                event.preventDefault();
+            }
+
+            var categoriesUrl = categoriesRootUrl + "GetCategories";
+
+            httpRequester.getJSON(categoriesUrl, function (data) {
+                clearContent();
+                // render the categories table
+                var htmlAllCategory = ui.buildCategories(data);
+                $(htmlAllCategory).appendTo('#result');
+                $("#pageTitle").html("Categories");
+            }, function (error) {
+                //alert("An error has occured while rendering the categories");
+            });
+        };
+
+        //$('#allCategories').on('click', function () {
+        //    showAllCategories();
+        //});
+
+        // Render a category edit view
+        function requestCategoryEditView(id) {
+            debugger;
+            var categoryEditViewUrl = categoriesRootUrl + "GetCategory/" + id;
+
+            httpRequester.getJSON(categoryEditViewUrl, function (data) {
+                clearContent();
+
+                // render the product edit view
+                var htmlEdit = ui.buildCategoryEditView(data);
+                $(htmlEdit).appendTo('#result');
+                $("#pageTitle").html("Edit Category");
+
+            }, function (error, args) {
+               // alert("An error has occured while rendering the product edit view" + error);
+            });
+        };
+
+        // Edit a category
+        function editCategory(id) {
+
+            $("#editCategoryForm").submit(function (event) {
+                if (event) {
+                    event.preventDefault();
+                }
+                var editUri = categoriesRootUrl + "PutCategory/" + id;                
+
+                var editedCategoryData = {
+                    id: id,
+                    name: $('#name').val(),
+                    description: $('#description').val()                    
+                }
+
+                httpRequester.putJSON(editUri, editedCategoryData, function () {
+                    clearContent();
+                    //alert("The category has been successfully edited and saved");
+                    showAllCategories();
+                }, function (error, args) {
+                    //alert("An error has occured while editing the category");
+                });
+            });
+        };
+
+        // Render a category create view
+        function requestCategoryCreateView() {
+            clearContent();
+            // render the category create view
+            var createCategoryHtml = ui.buildCategoryCreateView();
+            $(createCategoryHtml).appendTo('#result');
+            $("#pageTitle").html("Create a category");
+        }
+
+        // Delete a category
+        function deleteCategory(id) {  
+            
+            var deleteUrl = categoriesRootUrl + "DeleteCategory/" + id;
+
+            httpRequester.deleteJSON(deleteUrl, function (data) {
+                clearContent();
+                    //alert("The category has been successfully deleted");
+                showAllCategories(event);
+                displayMessage(data);
+            }, function (error, args) {               
+                    //alert("An error has occured while deleting the category");
+                });
+        };
+
+        // Create a category
+        function createCategory() {
+            $("#createCategoryForm").submit(function (event) {
+                if (event) {
+                    event.preventDefault();
+                }
+                debugger;
+                var createCategoryUri = categoriesRootUrl + "PostCategory";
+
+                var newCategoryData = {
+                    id: $('#categoryId').val(),
+                    name: $('#name').val(),
+                    description: $('#description').val()
+                }
+
+                httpRequester.postJSON(createCategoryUri, newCategoryData, function (data) {
+                    clearContent();                    
+                    showAllCategories();
+                    displayMessage(data);
+                }, function (error, args) {
+                    //alert(error);
+                });
+            });
+        };
+
+        function clearContent() {
+            $('#result').empty();
+            $("#pageTitle").empty();
+            $("#searchFormContainer").empty();
+        }
+
+        function displayMessage(data) {
+            debugger;
+            if (data.toLowerCase().indexOf("successfully") >= 0) {
+                $('#message').removeClass().addClass("text-success");
+            }
+            else {
+                $('#message').removeClass().addClass("text-danger");
+            }
+            $('#message').show();
+            $('#message').html(data);
+            setTimeout(function () {
+                $('#message').fadeOut('slow');
+            }, 3000);
+        }
+
+        function searchProducts() {
+            debugger;
+            var searchUri = productsRootUrl + "GetProductsBy?search=" + $('#search').val();
+
+            httpRequester.getJSON(searchUri, function (data) {
+                clearContent();
+                var html = ui.productsUI(data);
+                $(html).appendTo('#result');
+                $("#pageTitle").html("Search results");
+            }, function (error, args) {
+            });
+        }
+
+    </script>
+</head>
+<body>
+    <div class="container">
+        <!-- Navigation -->
+        <div>
+                <button class="btn btn-submit" id="allProducts" onclick="showAllProducts(event)">Manage products</button>                
+                <button class="btn btn-submit" id="allCategories" onclick="showAllCategories()">Manage categories</button>
+        </div>       
+
+        <!-- Main content -->
+        <div class="jumbotron">           
+            <h1 id="pageTitle"></h1>
+            <h3 id="message"></h3>
+            <div id="searchFormContainer"></div>
+            <div>
+                <div id="result"></div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
