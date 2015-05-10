@@ -1,1 +1,1 @@
-# ProductsCatalog
+# Products Catalog
