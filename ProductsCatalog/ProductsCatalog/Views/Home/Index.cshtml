@@ -128,8 +128,8 @@
 
 
         // Create a product
-        function createProduct() {            
-            
+        function createProduct() {
+
             $("#createProductForm").submit(function (event) {
                 if (event) {
                     event.preventDefault();
@@ -137,24 +137,18 @@
 
                 var createUri = productsRootUrl + "PostProduct";
 
-                //var formData = new FormData();
-                //var uploadedImage = $('#uploadimage')[0];
-                //formData.append("UploadedImage", uploadedImage.files[0]);
-                //formData.append("name", $('#name').val());
-                //formData.append("description", $('#description').val());
-                //formData.append("categoryName", $("#category option:selected").text());
-                //formData.append("categoryId", $("#category").children(":selected").attr("id"));
+                var files = event.target.files;
 
-                var newProductData = {
-                    id: $('#productId').val(),
-                    name: $('#name').val(),
-                    description: $('#description').val(),
-                    image: "",
-                    categoryName: $("#category option:selected").text(),
-                    categoryId: $("#category").children(":selected").attr("id")
-                }
+                var formData = new FormData();
+                var uploadedImage = $('#uploadimage')[0];
+                formData.append("UploadedImage", uploadedImage.files[0]);
+                formData.append("id", $('#productId').val());
+                formData.append("name", $('#name').val());
+                formData.append("description", $('#description').val());
+                formData.append("categoryName", $("#category option:selected").text());
+                formData.append("categoryId", $("#category").children(":selected").attr("id"));
 
-                httpRequester.postJSON(createUri, newProductData, function (data) {
+                httpRequester.postJSONFileUpload(createUri, formData, function (data) {
                     //alert("The product has been successfully edited and saved");
                     debugger;
                     showAllProducts();

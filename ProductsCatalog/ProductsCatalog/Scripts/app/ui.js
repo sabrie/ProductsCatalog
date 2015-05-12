@@ -93,7 +93,7 @@ var ui = (function () {
 
      function buildProductCreateView(data) {
          var htmlCreate =
-             '<form id="createProductForm">' +
+             '<form id="createProductForm" enctype="application/x-www-form-urlencoded" >' +
               '<h3>Create a product</h3>' +
 
               '<div class="form-group">' +

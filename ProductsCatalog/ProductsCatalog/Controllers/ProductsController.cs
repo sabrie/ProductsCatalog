@@ -18,6 +18,7 @@ using System.Data.Objects.SqlClient;
 using ProductsCatalog.Helpers;
 using System.Collections.Specialized;
 using System.Net.Http.Formatting;
+using System.Threading.Tasks;
 
 namespace ProductsCatalog.Controllers
 {
@@ -207,42 +208,70 @@ namespace ProductsCatalog.Controllers
         // POST api/Products
         [System.Web.Http.AcceptVerbs("GET", "POST")]
         [System.Web.Http.HttpPost]
-        public string PostProduct([FromBody] ProductEditViewModel product)
+        public async Task<HttpResponseMessage> PostProduct()
         {
-            string result = "";
-
-            if (ModelState.IsValid)
+            if (Request.Content.IsMimeMultipartContent("form-data"))
             {
-                //this.ValidateProductCreateModel(product);
+                if (!Request.Content.IsMimeMultipartContent())
+                {
+                    return Request.CreateResponse(HttpStatusCode.UnsupportedMediaType, "Unsupported media type.");
+                }
 
-                Product newProduct = db.Products.Where(p => p.Id == product.Id).FirstOrDefault();
+                // Read the file and form data.
+                var provider = new MultipartFormDataMemoryStreamProvider();
+                await Request.Content.ReadAsMultipartAsync(provider);
+
+                // Check if files are on the request.
+                if (!provider.FileStreams.Any())
+                {
+                    return Request.CreateResponse(HttpStatusCode.BadRequest, "No file uploaded.");
+                }
+
+                // Extract the fields from the form data.
+                string idString = provider.FormData["id"];
+                string name = provider.FormData["name"];
+                string description = provider.FormData["description"];
+                string categoryIdString = provider.FormData["categoryId"];
+                string imagePath = "";
+
+                // TODO: exception handling 
+                int id = Convert.ToInt32(idString);
+                int categoryId = Convert.ToInt32(categoryIdString);
+
+                IDictionary<string, string> uploadedFiles = new Dictionary<string, string>();
+                foreach (KeyValuePair<string, Stream> file in provider.FileStreams)
+                {
+                    var fileName = file.Key;
+                    var stream = file.Value;
+
+                    imagePath = UploadFile(stream, fileName);
+
+
+                    // Keep track of the filename for the response
+                    uploadedFiles.Add(fileName, "Result");
+                }
+
+                Product newProduct = db.Products.Where(p => p.Id == id).FirstOrDefault();
 
                 if (newProduct == null)
                 {
                     newProduct = new Product();
-                    newProduct.Id = product.Id;
-                    newProduct.Name = product.Name;
-                    newProduct.Description = product.Description;
-                    newProduct.CategoryId = product.CategoryId;
-                    //newProduct.Image = "ProductImages/default_product.png";
+                    newProduct.Id = id;
+                    newProduct.Name = name;
+                    newProduct.Description = description;
+                    newProduct.CategoryId = categoryId;
+                    newProduct.Image = imagePath;
 
                     db.Products.Add(newProduct);
-                    db.SaveChanges();
-
-                    result = "The product was successfully created";
+                    db.SaveChanges();                   
                 }
                 else
                 {
-                    result = "Product with the same id already exists.";
+                    Request.CreateResponse(HttpStatusCode.BadRequest, "A product with the same Id already exists");
                 }
-                
-            }
-            else
-            {
-                result = "Error: An error occured while creating the product";
             }
 
-            return result;
+            return Request.CreateResponse(HttpStatusCode.OK, "Product is successfully created");
         }
 
         // DELETE api/Products/5
