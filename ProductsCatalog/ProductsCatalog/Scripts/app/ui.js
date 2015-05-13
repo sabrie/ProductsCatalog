@@ -23,10 +23,10 @@ var ui = (function () {
         $.each(data, function (key, item) {
 
             if (item.image == null) {
-                item.image = "ProductImages/default_product.png";
+                item.image = "default_product.png";
             }
             html += '<tr>';
-            html += '<td class="col-md-1"> <img src="' + item.image + '" alt="' + item.name + '" height="180" width="180" /></td>';
+            html += '<td class="col-md-1"> <img src="ProductImages/' + item.image + '" alt="' + item.name + '" height="180" width="180" /></td>';
             html += '<td class="col-md-1">' + item.id + '</td>';
             html += '<td class="col-md-1">' + item.name + '</td>';
             html += '<td class="col-md-1">' + item.categoryName + '</td>';
@@ -43,7 +43,7 @@ var ui = (function () {
 
      function buildProductEditView(data) {
          var htmlEdit =
-             '<form id="editProductForm" enctype="multipart/form-data">' +             
+             '<form id="editProductForm" enctype="application/x-www-form-urlencoded">' +
 
               '<div class="form-group">' +
               '<label for="name" class="col-sm-2 control-label">Name</label>' +
@@ -60,7 +60,14 @@ var ui = (function () {
               '</div>' +
 
               '<div class="form-group">' +
-              '<label for="uploadimage" class="col-sm-2 control-label">Upload image</label>' +
+              '<label for="currentImage" class="col-sm-2 control-label">Current image</label>' +
+              '<div class="col-sm-10">' +
+                  '<img src="ProductImages/' + data.image + '" alt="' + data.name + '" height="180" width="180" />' +
+              '</div>' +
+              '</div>' +
+
+              '<div class="form-group">' +
+              '<label for="uploadimage" class="col-sm-2 control-label">Upload new image</label>' +
               '<div class="col-sm-10">' +
                   '<input type="file" id="uploadimage" class="form-control btn btn-default btn-file">' +
               '</div>' +

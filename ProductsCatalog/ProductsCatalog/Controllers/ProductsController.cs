@@ -28,6 +28,7 @@ namespace ProductsCatalog.Controllers
         private string imageFolderVirtualPath = @"~\ProductImages\";
         private string imageSrcFolder = @"ProductImages/";
         private string defaultImageSrc = @"ProductImages/default_product.png";
+        private string defaultImageFileName = "default_product.png";
 
         // GET api/Products
         public IOrderedQueryable<ProductViewModel> GetProducts()
@@ -115,61 +116,74 @@ namespace ProductsCatalog.Controllers
             return productEditViewModel;
         }
 
-        // PUT api/Products/5 FormDataCollection 
+        // PUT api/Products/5
         [System.Web.Http.AcceptVerbs("GET", "PUT")]
         [System.Web.Http.HttpPut]
-        public string PutProduct([FromBody] ProductEditViewModel product)
+        public async Task<HttpResponseMessage> PutProduct(string id)
         {
-            string result = "";
-            if (ModelState.IsValid)
+            if (Request.Content.IsMimeMultipartContent("form-data"))
             {
-                //this.ValidateProductCreateModel(product);
-
-                Product editedProduct = new Product();
-
-                editedProduct.Id = product.Id;
-                editedProduct.Name = product.Name;
-                editedProduct.Description = product.Description;
-                editedProduct.CategoryId = product.CategoryId;
-                //editedProduct.Image = product.Image;
-
-                //if (HttpContext.Current.Request.Files.AllKeys.Any())
-                //{
-                //    // Get the uploaded image from the Files collection
-                //    var httpPostedFile = HttpContext.Current.Request.Files["image"];
-
-                //    if (httpPostedFile != null)
-                //    {
-                //        // Validate the uploaded image(optional)
-
-                //        // Get the complete file path
-                //        var fileSavePath = Path.Combine(HttpContext.Current.Server.MapPath("~/ProductImages"), httpPostedFile.FileName);
-
-                //        // Save the uploaded file to "UploadedFiles" folder
-                //        httpPostedFile.SaveAs(fileSavePath);
-                //    }
-                //}
-
-
-                db.Entry(editedProduct).State = EntityState.Modified;
-
-                try
+                if (Request.Content.IsMimeMultipartContent())
                 {
-                    db.SaveChanges();
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    result = "An error occured while editing the product - from the WEB API";
-                }
+                    // Read the file and form data.
+                    var provider = new MultipartFormDataMemoryStreamProvider();
+                    await Request.Content.ReadAsMultipartAsync(provider);
 
-                result = "The product was successfully edited";
-            }
-            else
-            {
-                result = "An error occured while editing the product - from the WEB API";
+                    string imageFileName = ReadFilesFromFormDataAndUploadIfAny(provider);
+
+                    // Extract the other fields from the form data.
+                    string name = provider.FormData["name"];
+                    string description = provider.FormData["description"];
+                    string categoryIdString = provider.FormData["categoryId"];
+
+                    if (!String.IsNullOrEmpty(name) &&
+                        !String.IsNullOrEmpty(categoryIdString))
+                    {
+                        // TODO: additional exception handling 
+                        int idParsed = Convert.ToInt32(id);
+                        int categoryId = Convert.ToInt32(categoryIdString);
+
+                        Product editedProduct = db.Products.Where(p => p.Id == idParsed).FirstOrDefault();
+
+                        if (editedProduct != null)
+                        {
+                            editedProduct.Name = name;
+                            editedProduct.Description = description;
+                            editedProduct.CategoryId = categoryId;
+
+                            string currentImage = editedProduct.Image;
+
+                            // if there is a new image selected, delete the old image from file system 
+                            // if it is not the default image
+                            if (currentImage != this.defaultImageFileName && imageFileName != this.defaultImageFileName)
+                            {
+                                DeleteImageFromFileSystem(currentImage);
+                            }
+
+                            // if a new image is uploaded for the product
+                            // set the product image to it
+                            if (imageFileName != this.defaultImageFileName)
+                            {
+                                editedProduct.Image = imageFileName;
+                            }
+
+                            //db.Products.Add(product);
+                            db.Entry(editedProduct).State = EntityState.Modified;
+                            db.SaveChanges();
+                        }
+                        else
+                        {
+                            return Request.CreateResponse(HttpStatusCode.BadRequest, "Error: The product cannot be found");
+                        }
+                    }
+                    else
+                    {
+                        return Request.CreateResponse(HttpStatusCode.BadRequest, "Error: The following fields are required: Name, Category");
+                    }
+                }
             }
 
-            return result;
+            return Request.CreateResponse(HttpStatusCode.OK, "Product has been successfully edited");
         }
 
         // POST api/Products
@@ -185,7 +199,7 @@ namespace ProductsCatalog.Controllers
                     var provider = new MultipartFormDataMemoryStreamProvider();
                     await Request.Content.ReadAsMultipartAsync(provider);
 
-                    string imageSrc = ReadFilesFromFormDataAndUploadIfAny(provider);
+                    string imageFileName = ReadFilesFromFormDataAndUploadIfAny(provider);
                     
                     // Extract the other fields from the form data.
                     string idString = provider.FormData["id"];
@@ -210,7 +224,7 @@ namespace ProductsCatalog.Controllers
                             newProduct.Name = name;
                             newProduct.Description = description;
                             newProduct.CategoryId = categoryId;
-                            newProduct.Image = imageSrc;
+                            newProduct.Image = imageFileName;
 
                             db.Products.Add(newProduct);
                             db.SaveChanges();
@@ -227,29 +241,32 @@ namespace ProductsCatalog.Controllers
                 }
             }
 
-            return Request.CreateResponse(HttpStatusCode.OK, "Product is successfully created");
+            return Request.CreateResponse(HttpStatusCode.OK, "Product has been successfully created");
         }
 
         // DELETE api/Products/5
-        public string DeleteProduct(int id)
+        public HttpResponseMessage DeleteProduct(int id)
         {
-            string result = "";
-            
             Product product = db.Products.Where(p => p.Id == id).FirstOrDefault();
 
             if (product == null)
             {
-                result = "The product cannot be found";
+                return Request.CreateResponse(HttpStatusCode.BadRequest, "Error: The product could not be found and could not be deleted!");
             }
             else
             {
+                string imageFile = product.Image;
+
+                if (imageFile != this.defaultImageFileName)
+                {
+                    DeleteImageFromFileSystem(imageFile);
+                }
+
                 db.Products.Remove(product);
                 db.SaveChanges();
 
-                result = "The product " + product.Name + " is successfully deleted";
+                return Request.CreateResponse(HttpStatusCode.OK, "The product has been successfully deleted!");
             }
-
-            return result;
         }
 
         protected override void Dispose(bool disposing)
@@ -289,7 +306,7 @@ namespace ProductsCatalog.Controllers
 
         private string ReadFilesFromFormDataAndUploadIfAny(MultipartFormDataMemoryStreamProvider provider)
         {
-            string imageSrc = this.defaultImageSrc;
+            string imageFileName = this.defaultImageFileName;
 
             // Check if files are on the request.
             if (provider.FileStreams.Any())
@@ -303,12 +320,12 @@ namespace ProductsCatalog.Controllers
 
                     if (!String.IsNullOrEmpty(virtualPath))
                     {
-                        imageSrc = this.imageSrcFolder + fileName;
+                        imageFileName = fileName;
                     }
                 }
             }
-            
-            return imageSrc;
+
+            return imageFileName;
         }
 
         public string UploadFile(Stream stream, string fileName)
@@ -338,6 +355,17 @@ namespace ProductsCatalog.Controllers
             while ((len = input.Read(buffer, 0, buffer.Length)) > 0)
             {
                 output.Write(buffer, 0, len);
+            }
+        }
+
+        private void DeleteImageFromFileSystem(string imageName)
+        {
+            var virtualPath = this.imageFolderVirtualPath + imageName;
+            var filepath = HttpContext.Current.Server.MapPath(virtualPath);
+
+            if (File.Exists(filepath))
+            {
+                File.Delete(filepath);
             }
         }
 

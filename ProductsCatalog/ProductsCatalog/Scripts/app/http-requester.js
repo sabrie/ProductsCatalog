@@ -53,6 +53,20 @@ var httpRequester = (function () {
         });
     }
 
+    function putJSONFileUpload(url, data, success, error) {
+        $.ajax({
+            url: url,
+            type: "PUT",
+            contentType: false,
+            cache: false,
+            dataType: "json",
+            processData: false,
+            data: data,
+            success: success,
+            error: error
+        });
+    }
+
     function deleteJSON(url, success, error) {
         $.ajax({
             url: url,
@@ -71,6 +85,7 @@ var httpRequester = (function () {
         postJSON: postJSON,
         putJSON: putJSON,
         deleteJSON: deleteJSON,
-        postJSONFileUpload: postJSONFileUpload
+        postJSONFileUpload: postJSONFileUpload,
+        putJSONFileUpload: putJSONFileUpload
     };
 }());
