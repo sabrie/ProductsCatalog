@@ -25,6 +25,9 @@ namespace ProductsCatalog.Controllers
     public class ProductsController : ApiController
     {
         private ProductsCatalogEntities db = new ProductsCatalogEntities();
+        private string imageFolderVirtualPath = @"~\ProductImages\";
+        private string imageSrcFolder = @"ProductImages/";
+        private string defaultImageSrc = @"ProductImages/default_product.png";
 
         // GET api/Products
         public IOrderedQueryable<ProductViewModel> GetProducts()
@@ -169,42 +172,6 @@ namespace ProductsCatalog.Controllers
             return result;
         }
 
-        public string UploadFile(Stream stream, string fileName)
-        {
-            var virtualPath = @"~\ProductImages\" + fileName;
-            var filepath = HttpContext.Current.Server.MapPath(virtualPath);// + fileInfo.FileName);
-
-            var path = Path.GetDirectoryName(filepath);
-
-            if (path != null && !Directory.Exists(path))
-            {
-                Directory.CreateDirectory(path);
-            }
-
-            //using (Stream file = File.OpenWrite(filepath))
-            //{
-                int length = 256;
-                int bytesRead = 0;
-                Byte[] buffer = new Byte[length];
-
-                // write the required bytes
-                using (FileStream fs = new FileStream(fileName, FileMode.Create))
-                {
-                    do
-                    {
-                        bytesRead = stream.Read(buffer, 0, length);
-                        fs.Write(buffer, 0, bytesRead);
-                    }
-                    while (bytesRead == length);
-                }
-
-                stream.Dispose();
-                
-               //System.Data.Common.Utils.CopyStream(stream, file);
-            //}
-            return filepath;
-        }
-
         // POST api/Products
         [System.Web.Http.AcceptVerbs("GET", "POST")]
         [System.Web.Http.HttpPost]
@@ -212,62 +179,51 @@ namespace ProductsCatalog.Controllers
         {
             if (Request.Content.IsMimeMultipartContent("form-data"))
             {
-                if (!Request.Content.IsMimeMultipartContent())
+                if (Request.Content.IsMimeMultipartContent())
                 {
-                    return Request.CreateResponse(HttpStatusCode.UnsupportedMediaType, "Unsupported media type.");
-                }
+                    // Read the file and form data.
+                    var provider = new MultipartFormDataMemoryStreamProvider();
+                    await Request.Content.ReadAsMultipartAsync(provider);
 
-                // Read the file and form data.
-                var provider = new MultipartFormDataMemoryStreamProvider();
-                await Request.Content.ReadAsMultipartAsync(provider);
+                    string imageSrc = ReadFilesFromFormDataAndUploadIfAny(provider);
+                    
+                    // Extract the other fields from the form data.
+                    string idString = provider.FormData["id"];
+                    string name = provider.FormData["name"];
+                    string description = provider.FormData["description"];
+                    string categoryIdString = provider.FormData["categoryId"];
 
-                // Check if files are on the request.
-                if (!provider.FileStreams.Any())
-                {
-                    return Request.CreateResponse(HttpStatusCode.BadRequest, "No file uploaded.");
-                }
+                    if (!String.IsNullOrEmpty(idString) &&
+                        !String.IsNullOrEmpty(name) &&
+                        !String.IsNullOrEmpty(categoryIdString))
+                    {
+                        // TODO: additional exception handling 
+                        int id = Convert.ToInt32(idString);
+                        int categoryId = Convert.ToInt32(categoryIdString);
 
-                // Extract the fields from the form data.
-                string idString = provider.FormData["id"];
-                string name = provider.FormData["name"];
-                string description = provider.FormData["description"];
-                string categoryIdString = provider.FormData["categoryId"];
-                string imagePath = "";
+                        Product newProduct = db.Products.Where(p => p.Id == id).FirstOrDefault();
 
-                // TODO: exception handling 
-                int id = Convert.ToInt32(idString);
-                int categoryId = Convert.ToInt32(categoryIdString);
+                        if (newProduct == null)
+                        {
+                            newProduct = new Product();
+                            newProduct.Id = id;
+                            newProduct.Name = name;
+                            newProduct.Description = description;
+                            newProduct.CategoryId = categoryId;
+                            newProduct.Image = imageSrc;
 
-                IDictionary<string, string> uploadedFiles = new Dictionary<string, string>();
-                foreach (KeyValuePair<string, Stream> file in provider.FileStreams)
-                {
-                    var fileName = file.Key;
-                    var stream = file.Value;
-
-                    imagePath = UploadFile(stream, fileName);
-
-
-                    // Keep track of the filename for the response
-                    uploadedFiles.Add(fileName, "Result");
-                }
-
-                Product newProduct = db.Products.Where(p => p.Id == id).FirstOrDefault();
-
-                if (newProduct == null)
-                {
-                    newProduct = new Product();
-                    newProduct.Id = id;
-                    newProduct.Name = name;
-                    newProduct.Description = description;
-                    newProduct.CategoryId = categoryId;
-                    newProduct.Image = imagePath;
-
-                    db.Products.Add(newProduct);
-                    db.SaveChanges();                   
-                }
-                else
-                {
-                    Request.CreateResponse(HttpStatusCode.BadRequest, "A product with the same Id already exists");
+                            db.Products.Add(newProduct);
+                            db.SaveChanges();
+                        }
+                        else
+                        {
+                            return Request.CreateResponse(HttpStatusCode.BadRequest, "Error: A product with the same Id already exists");
+                        }
+                    }
+                    else
+                    {
+                        return Request.CreateResponse(HttpStatusCode.BadRequest, "Error: The following fields are required: Id, Name, Category");
+                    }
                 }
             }
 
@@ -295,8 +251,6 @@ namespace ProductsCatalog.Controllers
 
             return result;
         }
-
-
 
         protected override void Dispose(bool disposing)
         {
@@ -331,6 +285,60 @@ namespace ProductsCatalog.Controllers
                 );
 
             return productsModel.OrderBy(pm => pm.Name);
+        }
+
+        private string ReadFilesFromFormDataAndUploadIfAny(MultipartFormDataMemoryStreamProvider provider)
+        {
+            string imageSrc = this.defaultImageSrc;
+
+            // Check if files are on the request.
+            if (provider.FileStreams.Any())
+            {
+                foreach (KeyValuePair<string, Stream> file in provider.FileStreams)
+                {
+                    var fileName = file.Key;
+                    var stream = file.Value;
+
+                    string virtualPath = UploadFile(stream, fileName);
+
+                    if (!String.IsNullOrEmpty(virtualPath))
+                    {
+                        imageSrc = this.imageSrcFolder + fileName;
+                    }
+                }
+            }
+            
+            return imageSrc;
+        }
+
+        public string UploadFile(Stream stream, string fileName)
+        {
+            var virtualPath = this.imageFolderVirtualPath + fileName;
+            var filepath = HttpContext.Current.Server.MapPath(virtualPath);
+
+            var path = Path.GetDirectoryName(filepath);
+
+            if (path != null && !Directory.Exists(path))
+            {
+                Directory.CreateDirectory(path);
+            }
+
+            using (Stream file = File.OpenWrite(filepath))
+            {
+                CopyStream(stream, file);
+            }
+
+            return virtualPath;
+        }
+
+        public static void CopyStream(Stream input, Stream output)
+        {
+            var buffer = new byte[8 * 1024];
+            int len;
+            while ((len = input.Read(buffer, 0, buffer.Length)) > 0)
+            {
+                output.Write(buffer, 0, len);
+            }
         }
 
         //private void ValidateProductCreateModel(ProductEditViewModel model)

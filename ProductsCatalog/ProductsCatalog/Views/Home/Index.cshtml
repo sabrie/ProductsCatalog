@@ -154,7 +154,8 @@
                     showAllProducts();
                     displayMessage(data);
                 }, function (error, args) {
-                    //alert("An error has occured while creating the product");
+                    debugger;
+                    displayMessage(error.responseText);
                 });
             });
         };

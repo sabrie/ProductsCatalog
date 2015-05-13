@@ -26,7 +26,7 @@ var ui = (function () {
                 item.image = "ProductImages/default_product.png";
             }
             html += '<tr>';
-            html += '<td class="col-md-1"> <img src="' + item.image + '"/></td>';
+            html += '<td class="col-md-1"> <img src="' + item.image + '" alt="' + item.name + '" height="180" width="180" /></td>';
             html += '<td class="col-md-1">' + item.id + '</td>';
             html += '<td class="col-md-1">' + item.name + '</td>';
             html += '<td class="col-md-1">' + item.categoryName + '</td>';
